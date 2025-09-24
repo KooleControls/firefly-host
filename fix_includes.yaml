@@ -1,0 +1,7 @@
+parseInfos:
+- path: './main'
+  doCMAKE: true
+  doIncludes: false  
+- path: './main/lib/rtos'
+  doCMAKE: false
+  doIncludes: true  

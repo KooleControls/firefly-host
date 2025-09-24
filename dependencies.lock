@@ -1,0 +1,135 @@
+dependencies:
+  espp/base_component:
+    component_hash: 25c5b62f158887e1dc2aae17141d28bdae08e2f7af91bc9f6506933169095f74
+    dependencies:
+    - name: espp/logger
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0'
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.0.22
+  espp/file_system:
+    component_hash: 17f9e7d18b09cdd05822eb6ca5056e61a6029855f96123aac74a83afea5c4c96
+    dependencies:
+    - name: espp/base_component
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0'
+    - name: idf
+      require: private
+      version: '>=5.0'
+    - name: joltwallet/littlefs
+      registry_url: https://components.espressif.com
+      require: private
+      version: 1.19.2
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.0.22
+  espp/format:
+    component_hash: c131458fb5e0b6b1cc0d8042acaf676b57e2ac8fe232df02fee202bd43a510b7
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.0.22
+  espp/ftp:
+    component_hash: 9c187ffb2da10b6c530b40bf959b83753ed1710f05a4e6a08f4ab7af2de39385
+    dependencies:
+    - name: espp/base_component
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0'
+    - name: espp/file_system
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0'
+    - name: espp/socket
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0'
+    - name: espp/task
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0'
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.0.22
+  espp/logger:
+    component_hash: 88fc12fcab4e8335695c816e72599f15a478ecf4bcf753e7ede720857cb21be1
+    dependencies:
+    - name: espp/format
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0'
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.0.22
+  espp/socket:
+    component_hash: 506a653d17beabcf09d4fbf00df2b739f2c73b25eb99077a16f90294cef4f2ae
+    dependencies:
+    - name: espp/base_component
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0'
+    - name: espp/task
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0'
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.0.22
+  espp/task:
+    component_hash: a5aa6c8d042a5484716781d04021ead09f29c2dc53b953ede60c0a81b317518d
+    dependencies:
+    - name: espp/base_component
+      registry_url: https://components.espressif.com
+      require: private
+      version: '>=1.0'
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.0.22
+  idf:
+    source:
+      type: idf
+    version: 5.5.0
+  joltwallet/littlefs:
+    component_hash: e1dbe782be5aa58e879fe9f22bee60e5ff68acbfe3793d92a2e730c27374c787
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com
+      type: service
+    version: 1.19.2
+direct_dependencies:
+- espp/ftp
+- idf
+manifest_hash: 9c61adab07083b7d69f98848707d3e2d226586e9f6c962cc90a0d7327ab04cdf
+target: esp32
+version: 2.0.0
