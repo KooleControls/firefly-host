@@ -6,7 +6,7 @@
 
 static wl_handle_t wl_handle;
 
-void mount_fatfs(void) {
+esp_err_t mount_fatfs(void) {
     const esp_vfs_fat_mount_config_t mount_config = {
         .format_if_mount_failed = true,
         .max_files = 5,
@@ -20,7 +20,7 @@ void mount_fatfs(void) {
         ESP_LOGI("FAT", "FATFS mounted at /fat");
     }
 
-    //mkdir("/fat/assets", 0777); // Create assets directory if it doesn't exist
+    return err;
 }
 
 
