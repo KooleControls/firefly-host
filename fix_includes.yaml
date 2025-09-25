@@ -5,3 +5,6 @@ parseInfos:
 - path: './main/lib/rtos'
   doCMAKE: false
   doIncludes: true  
+- path: './main/lib/json'
+  doCMAKE: false
+  doIncludes: true  

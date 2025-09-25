@@ -4,6 +4,7 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "fat.h"
+#include "http.h"
 
 constexpr char *TAG = "Main";
 
@@ -25,6 +26,9 @@ extern "C" void app_main(void)
 
     // Initialize the application context
     appContext.Init();
+
+
+    start_webserver();
 
 }
 

@@ -15,8 +15,10 @@ set(INCLUDE_DIRS_LIST
     "Application/Ftp"
     "Application/Hardware"
     "lib/common"
+    "lib/json"
     "lib/nvs"
     "lib/rtos"
+    "lib/stream"
     "lib/system"
 )
 

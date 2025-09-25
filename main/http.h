@@ -5,7 +5,9 @@
 #include "lwip/sys.h"
 #include "cJSON.h"
 #include "AppContext.h"
-#include "JsonStream.h"
+#include "json.h"
+#include <dirent.h>
+
 
 constexpr char *TAG_HTTP = "Http";
 
@@ -23,6 +25,7 @@ public:
     }
 
     size_t read(void* buffer, size_t len) override {
+        assert(false && "ResponseStream does not support read()");
         return 0; // not supported
     }
 
@@ -121,246 +124,60 @@ esp_err_t file_get_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t api_send_setting(JsonObjectWriter& writer, SettingHandle& setting)
-{
-    if (!setting)
-        return ESP_FAIL;
+static void write_directory(JsonArrayWriter& arr, const char* path) {
+    DIR* dir = opendir(path);
+    if (!dir) return;
 
-    writer.field("name", setting.GetKey());
-
-    switch (setting.GetType())
-    {
-    case SettingType::Integer: 
-        writer.field("type", "integer");
-        writer.field("value", setting.get<int32_t>());
-        writer.field("default", setting.getDefault<int32_t>());
-        break;
-    case SettingType::Boolean:
-        writer.field("type", "boolean");
-        writer.field("value", setting.get<bool>());
-        writer.field("default", setting.getDefault<bool>());
-        break;
-    case SettingType::Float:
-        writer.field("type", "float");
-        writer.field("value", setting.get<float>());
-        writer.field("default", setting.getDefault<float>());
-        break;
-    case SettingType::String:{
-        writer.field("type", "string");
-        char* buf = setting.ptr<char>();
-        writer.field("value", buf);
-        writer.field("default", setting.getDefault<const char*>());
-        break;
-    }
-    case SettingType::Enum:
-        writer.field("type", "enum");
-        writer.field("value", setting.get<int32_t>());
-        writer.field("default", setting.getDefault<int32_t>());
-        break;   
-    
-    default:
-        writer.field("type", "unknown");
-        break;
-    }
-
-    return ESP_OK;
-}
-
-
-esp_err_t api_settings_group(JsonObjectWriter& writer, const SettingGroupDescriptor* groupDesc) 
-{
-    if (!groupDesc) 
-        return ESP_FAIL;
-
-    writer.field("name", groupDesc->name);
-    writer.withArray("settings", [groupDesc](JsonArrayWriter& arr) 
-    {
-        SettingsManager& settings = AppContext::GetAppContext().GetSettingsManager();
-        auto accessor = settings.GetAccessor();
-
-        for(int i=0; i < groupDesc->count; ++i) 
-        {
-            const SettingDescriptor* desc = &groupDesc->descriptors[i];
-            auto setting = accessor.find(groupDesc, desc);
-            if (!setting)
-                continue;
-
-            arr.withObject([&setting](JsonObjectWriter& obj) {
-                api_send_setting(obj, setting);
-            });
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
         }
-    });
-    return ESP_OK;
-}
 
+        // Build full path
+        char fullpath[256];
+        snprintf(fullpath, sizeof(fullpath), "%s/%s", path, entry->d_name);
 
-esp_err_t api_settings_handler_resp(httpd_req_t *req)
-{
-    ResponseStream respStream(req);
-    JsonArrayWriter json(respStream);
-    size_t groups = SettingsTraits<RootSettings>::DescriptorCount;
+        arr.withObject([&](JsonObjectWriter& obj) {
+            obj.field("name", entry->d_name);
 
-    for(int i=0; i < groups; ++i) 
-    {
-        const SettingGroupDescriptor* descriptor = &SettingsTraits<RootSettings>::Descriptors[i];
-        json.withObject([descriptor](JsonObjectWriter& obj){
-            api_settings_group(obj, descriptor);
+            if (entry->d_type == DT_DIR) {
+                obj.withArray("children", [&](JsonArrayWriter& subarr) {
+                    write_directory(subarr, fullpath);
+                });
+            } else {
+                FILE* f = fopen(fullpath, "rb");
+                if (f) {
+                    fseek(f, 0, SEEK_END);
+                    long size = ftell(f);
+                    fclose(f);
+                    obj.field("size", (int64_t)size);
+                } else {
+                    obj.field("size", (int64_t)-1);
+                }
+            }
         });
     }
-
-    return ESP_OK;
+    closedir(dir);
 }
 
-esp_err_t api_settings_handler(httpd_req_t *req)
-{
-    SettingsManager& settings = AppContext::GetAppContext().GetSettingsManager();
-
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Headers", "Content-Type");
+esp_err_t api_list_fat_handler(httpd_req_t* req) {
     httpd_resp_set_type(req, "application/json");
 
-    api_settings_handler_resp(req);
+    ResponseStream rs(req);
+    
+    JsonObjectWriter::create(rs, [&](JsonObjectWriter& root) {
+        root.field("filesystem", "FAT");
+        root.field("path", "/fat");
 
-    httpd_resp_sendstr_chunk(req, NULL); // end response
-    return ESP_OK;
-}
+        // List files
+        root.withArray("files", [&](JsonArrayWriter& arr) {
+            write_directory(arr, "/fat");
+        });
+    });
 
-
-esp_err_t api_settings_update_handler(httpd_req_t *req, SettingHandle& setting, cJSON* cValue)
-{
-    switch (setting.GetType()) {
-        case SettingType::Integer:
-        case SettingType::Enum: {
-            if (!cJSON_IsNumber(cValue)) {
-                httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Value must be a number");
-                return ESP_FAIL;
-            }
-            setting.set<int32_t>(cValue->valueint);
-            break;
-        }
-
-        case SettingType::Boolean: {
-            if (!cJSON_IsBool(cValue)) {
-                httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Value must be true/false");
-                return ESP_FAIL;
-            }
-            setting.set<bool>(cJSON_IsTrue(cValue));
-            break;
-        }
-
-        case SettingType::Float: {
-            if (!cJSON_IsNumber(cValue)) {
-                httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Value must be a number");
-                return ESP_FAIL;
-            }
-            setting.set<float>(static_cast<float>(cValue->valuedouble));
-            break;
-        }
-
-        default:
-            httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Unsupported type");
-            return ESP_FAIL;
-    }
-
-    return ESP_OK;
-}
-
-esp_err_t api_settings_update_handler(httpd_req_t *req) {
-    char buf[256];
-    int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
-    if (ret <= 0) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Empty request");
-        return ESP_FAIL;
-    }
-    buf[ret] = '\0';
-
-    cJSON *root = cJSON_Parse(buf);
-    if (!root) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
-        return ESP_FAIL;
-    }
-
-    cJSON *cContainer = cJSON_GetObjectItem(root, "container");
-    cJSON *cName      = cJSON_GetObjectItem(root, "name");
-    cJSON *cValue     = cJSON_GetObjectItem(root, "value");
-
-    if (!cContainer || !cName || !cValue ||
-        !cJSON_IsString(cContainer) || !cJSON_IsString(cName)) {
-        cJSON_Delete(root);
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing fields");
-        return ESP_FAIL;
-    }
-
-    SettingsManager& settingsManager = AppContext::GetAppContext().GetSettingsManager();
-    auto accessor = settingsManager.GetAccessor();
-    auto handle   = accessor.find(cContainer->valuestring, cName->valuestring);
-
-    if (!handle) {
-        cJSON_Delete(root);
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Container or setting not found");
-        return ESP_FAIL;
-    }
-
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-    esp_err_t result = api_settings_update_handler(req, handle, cValue);
-
-    cJSON_Delete(root);
-    return result;
-}
-
-esp_err_t api_settings_command_handler(httpd_req_t *req) {
-    char buf[256];
-    int ret = httpd_req_recv(req, buf, sizeof(buf) - 1);
-    if (ret <= 0) {
-        return ESP_FAIL;
-    }
-    buf[ret] = '\0';
-
-    // Example payload: {"command":"xxx"}
-    cJSON *root = cJSON_Parse(buf);
-    if (!root) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
-        return ESP_FAIL;
-    }
-
-    cJSON *cmdItem = cJSON_GetObjectItem(root, "command");
-    if (!cJSON_IsString(cmdItem)) {
-        cJSON_Delete(root);
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing command");
-        return ESP_FAIL;
-    }
-
-    const char *command = cmdItem->valuestring;
-
-    char response[256];
-
-    if (strcmp(command, "CRES") == 0) {
-        snprintf(response, sizeof(response), "{\"result\":\"Restarting\"}");
-        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-        httpd_resp_sendstr(req, response);
-        cJSON_Delete(root);
-        esp_restart(); // will never return
-        return ESP_OK;
-    } 
-    else if (strcmp(command, "DVER") == 0) {
-        snprintf(response, sizeof(response), "{\"result\":\"%s\"}", "1.0.0");
-    } 
-    else if (strcmp(command, "CSAV") == 0) {
-        SettingsManager& settings = AppContext::GetAppContext().GetSettingsManager();
-        settings.SaveAll();
-        snprintf(response, sizeof(response), "{\"result\":\"%s\"}", "OK");
-    } 
-    else {
-        snprintf(response, sizeof(response), "{\"result\":\"%s\"}", "Command not found");
-    }
-
-    cJSON_Delete(root);
-
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
-    httpd_resp_sendstr(req, response);
-
+    // Finish chunked response
+    httpd_resp_sendstr_chunk(req, NULL);
     return ESP_OK;
 }
 
@@ -385,33 +202,15 @@ void start_webserver(void)
     httpd_handle_t server = NULL;
 
     if (httpd_start(&server, &config) == ESP_OK)
-    {
-
-
-        // Register API first
-        httpd_uri_t api_settings = {
-            .uri = "/api/settings",
+    {       
+        httpd_uri_t list_uri = {
+            .uri = "/api/files",
             .method = HTTP_GET,
-            .handler = api_settings_handler,
+            .handler = api_list_fat_handler,
             .user_ctx = NULL};
-        httpd_register_uri_handler(server, &api_settings);
+        httpd_register_uri_handler(server, &list_uri);
 
 
-        httpd_uri_t api_settings_update = {
-            .uri = "/api/settings",
-            .method = HTTP_PUT,
-            .handler = api_settings_update_handler,
-            .user_ctx = NULL};
-        httpd_register_uri_handler(server, &api_settings_update);
-
-        httpd_uri_t api_settings_command = {
-            .uri = "/api/command",
-            .method = HTTP_POST,
-            .handler = api_settings_command_handler,
-            .user_ctx = NULL};
-        httpd_register_uri_handler(server, &api_settings_command);
-
-        
         // Handle OPTIONS for CORS preflight
         httpd_uri_t api_settings_options = {
             .uri = "/*",
