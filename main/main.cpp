@@ -3,10 +3,8 @@
 #include "AppContext.h"
 #include "nvs_flash.h"
 #include "esp_netif.h"
-#include "fat.h"
 
 constexpr char *TAG = "Main";
-
 
 AppContext appContext;
 
