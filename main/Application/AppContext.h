@@ -2,6 +2,7 @@
 #include "InitGuard.h"
 #include "HardwareManager.h"
 #include "FtpManager.h"
+#include "WebManager.h"
 
 class AppContext
 {
@@ -18,6 +19,7 @@ public:
 
         hardwareManager.init();
         ftpManager.init();
+        webManager.init();
 
         initGuard.SetReady();
     }
@@ -30,6 +32,7 @@ private:
 
     HardwareManager hardwareManager;
     FtpManager ftpManager;
+    WebManager webManager;
 
 };
 

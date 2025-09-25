@@ -3,6 +3,7 @@
 #include "InitGuard.h"
 #include "WifiDriver.h"
 #include "EthernetDriver.h"
+#include "FatFsDriver.h"
 
 class HardwareManager {
     constexpr static const char* TAG = "HardwareManager";
@@ -21,6 +22,7 @@ public:
 
         wifiDriver.Init();
         ethernetDriver.Init();
+        fatFsDriver.Init();
 
         initGuard.SetReady();
     }
@@ -38,5 +40,6 @@ private:
     InitGuard initGuard;
     WifiDriver wifiDriver;
     EthernetDriver ethernetDriver;
+    FatfsDriver fatFsDriver{"/fat", "fat"};
 
 };
