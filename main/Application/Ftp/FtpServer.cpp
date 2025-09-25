@@ -150,7 +150,7 @@ void FtpServer::ftp_cmd_auth(Client &c, const char *args) {
     }
 
     if (strcasecmp(args, "TLS") == 0 || strcasecmp(args, "SSL") == 0) {
-        ESP_LOGW(TAG_FTP, "AUTH %s requested but not supported", args);
+        //ESP_LOGW(TAG_FTP, "AUTH %s requested but not supported", args);
         const char *resp = "534 Local policy on server does not allow TLS/SSL\r\n";
         send(c.client_sock, resp, strlen(resp), 0);
     } else {
