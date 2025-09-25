@@ -11,6 +11,7 @@ public:
     void value(uint64_t v) { writeComma(); writer.writeUInt(v); }
     void value(const char* v) { writeComma(); writer.writeString(v); }
     void value(bool v) { writeComma(); writer.writeBool(v); }
+    void fieldData(const uint8_t* data, size_t len) {        writeComma(); writer.writeData(data, len);    }
     void valueNull() { writeComma(); writeNull(); }
 
     template<typename FUNC>

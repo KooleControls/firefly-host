@@ -19,9 +19,13 @@ public:
     void field(const char* key, bool v) {
         writeComma(); writer.writeString(key); writeColon(); writer.writeBool(v);
     }
+    void fieldData(const char* key, const uint8_t* data, size_t len) {
+        writeComma(); writer.writeString(key); writeColon(); writer.writeData(data, len);
+    }
     void fieldNull(const char* key) {
         writeComma(); writer.writeString(key); writeColon(); writeNull();
     }
+
 
     template <typename FUNC>
     void withObject(const char* key, FUNC callback);

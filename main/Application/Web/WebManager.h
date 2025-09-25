@@ -1,11 +1,14 @@
 #pragma once
 #include "WebServer.h"
 #include "FileController.h"
+#include "ApiController.h"
+
 
 
 class WebManager {
 public:
-    WebManager() = default;
+    WebManager(GuestManager& guestManager)
+        : guestManager(guestManager) {}
     ~WebManager() = default;
 
     WebManager(const WebManager&) = delete;
@@ -15,14 +18,23 @@ public:
 
     void init() {
         server.start();
+        apiController.init();
+        
+
+        // These need last!
         fileController.init();
+        server.EnableCors();
     }
 
 
 
 private:
     WebServer server;
+    GuestManager& guestManager;
+    ApiController apiController{server, guestManager};
+    
     FileController fileController{server};
+
 };
 
 
