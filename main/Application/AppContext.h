@@ -1,6 +1,7 @@
 #pragma once
 #include "InitGuard.h"
 #include "HardwareManager.h"
+#include "FtpManager.h"
 
 class AppContext
 {
@@ -14,18 +15,21 @@ public:
     {
         if(initGuard.IsReady())
             return;
+
         hardwareManager.init();
+        ftpManager.init();
 
         initGuard.SetReady();
     }
 
-    
+
 
 private:
 
     InitGuard initGuard;
 
     HardwareManager hardwareManager;
+    FtpManager ftpManager;
 
 };
 

@@ -2,6 +2,7 @@
 
 set(SOURCE_FILES_LIST
     "main.cpp"
+    "Application/Ftp/FtpServer.cpp"
     "lib/nvs/NvsStorage.cpp"
     "lib/system/DateTime.cpp"
     "lib/system/TimeSpan.cpp"
@@ -11,6 +12,7 @@ set(INCLUDE_DIRS_LIST
     .
     "Application"
     "lib"
+    "Application/Ftp"
     "Application/Hardware"
     "lib/common"
     "lib/nvs"

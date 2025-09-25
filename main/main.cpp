@@ -3,6 +3,7 @@
 #include "AppContext.h"
 #include "nvs_flash.h"
 #include "esp_netif.h"
+#include "fat.h"
 
 constexpr char *TAG = "Main";
 
@@ -18,6 +19,9 @@ extern "C" void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_LOGI("network_init", "Network stack initialized");
+
+    // Setup the fat filesystem
+    mount_fatfs();
 
     // Initialize the application context
     appContext.Init();
