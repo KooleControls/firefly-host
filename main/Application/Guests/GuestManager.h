@@ -18,13 +18,7 @@ public:
 
     void init()
     {
-        uint8_t mac1[6] = {0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x01};
-        uint8_t mac2[6] = {0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x02};
-        uint8_t mac3[6] = {0xAA, 0xBB, 0xCC, 0x00, 0x00, 0x03};
 
-        createGuest(mac1, 0);
-        createGuest(mac2, 5);
-        createGuest(mac3, 10);
     }
 
     void ReportGuest(const uint8_t mac[6], uint32_t buttonPresses)
