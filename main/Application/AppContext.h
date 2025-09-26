@@ -30,9 +30,9 @@ public:
         initGuard.SetReady();
     }
 
-    void Main()
+    void Tick()
     {
-
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 
 private:

@@ -72,7 +72,7 @@ private:
     void updateGuest(Guest &g, uint32_t buttonPresses)
     {
         g.lastMessageTime = DateTime::Now();
-        g.buttonPresses += buttonPresses;
+        g.buttonPresses = buttonPresses;
     }
 
     void createGuest(const uint8_t mac[6], uint32_t buttonPresses)

@@ -15,8 +15,12 @@ extern "C" void app_main(void)
     appContext.Init();
 
     // Enter the main application loop
-    appContext.Main();
+    while(1) {
+        appContext.Tick();
+    }
 }
+
+
 
 
 

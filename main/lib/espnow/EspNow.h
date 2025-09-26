@@ -108,7 +108,7 @@ inline bool EspNow::Package::GetData(T &out) const
     static_assert(std::is_trivially_copyable<T>::value,
                   "T must be trivially copyable");
 
-    if (dataSize >= sizeof(T))
+    if (dataSize < sizeof(T))
         return false;
     
     memcpy(&out, data, sizeof(T));

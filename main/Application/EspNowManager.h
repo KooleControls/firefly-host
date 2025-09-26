@@ -92,8 +92,6 @@ private:
             ESP_LOGW("EspNowManager", "Invalid button press data size: %u", package.dataSize);
             return;
         }
-
-        ESP_LOGI("EspNowManager", "Guest button presses: %u", buttonPresses);
         guestManager.ReportGuest(package.source, buttonPresses);
     }
 
@@ -115,6 +113,7 @@ private:
                 break;
 
             (this->*entry.handler)(package);
+            return;
         }
         ESP_LOGW("EspNowManager", "Unknown command: %.4s", package.commandId);
     }
