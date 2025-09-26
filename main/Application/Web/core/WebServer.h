@@ -19,6 +19,9 @@ public:
         if (server)
             return;
         httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+        config.max_open_sockets = 8;  // allow 8 concurrent sockets
+        config.max_uri_handlers = 16; // more endpoints
+
         config.uri_match_fn = httpd_uri_match_wildcard;
         ESP_ERROR_CHECK(httpd_start(&server, &config));
     }

@@ -103,6 +103,7 @@ private:
     }
 
     esp_err_t streamFile(httpd_req_t* req, const char* filepath) {
+        ESP_LOGI("FileGetEndpoint", "Serving file: %s", filepath);
         int fd = open(filepath, O_RDONLY);
         if (fd < 0) {
             ESP_LOGE("FileGetEndpoint", "Failed to open: %s", filepath);
