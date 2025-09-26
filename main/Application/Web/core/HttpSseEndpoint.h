@@ -13,7 +13,6 @@ protected:
         httpd_handle_t server = nullptr;
         int sockfd = -1;
         bool active = false;
-        uint32_t lastActivity = 0; // for keepalive timeouts
     };
 
     class SocketStream : public Stream {
@@ -44,7 +43,9 @@ protected:
 template<size_t MaxClients>
 class HttpSseEndpoint : public HttpEndpoint, protected HttpSseEndpointBase {
 public:
-    HttpSseEndpoint() = default;
+    HttpSseEndpoint(const char* /*taskName*/, uint32_t /*stackSize*/, UBaseType_t /*prio*/) {
+        // Could spawn a keepalive task here if desired
+    }
 
     esp_err_t handle(httpd_req_t* req) override {
         int fd = httpd_req_to_sockfd(req);
@@ -71,36 +72,17 @@ public:
                 clients[i].server = req->handle;
                 clients[i].sockfd = fd;
                 clients[i].active = true;
-                clients[i].lastActivity = xTaskGetTickCount();
                 ESP_LOGI(TAG, "SSE client %d connected (fd=%d)", (int)i, fd);
 
+                // Call OnConnect hook
                 SocketStream stream(clients[i].server, clients[i].sockfd);
                 OnConnect(stream);
+
                 break;
             }
         }
 
         return ESP_OK;
-    }
-
-    /// Called periodically from main loop
-    void tick() {
-        uint32_t now = xTaskGetTickCount();
-        LOCK(clientMutex);
-        for (size_t i = 0; i < MaxClients; i++) {
-            if (clients[i].active) {
-                if (now - clients[i].lastActivity > pdMS_TO_TICKS(30000)) {
-                    // send keepalive
-                    static const char* msg = ": keepalive\n\n";
-                    if (httpd_socket_send(clients[i].server, clients[i].sockfd, msg, strlen(msg), 0) < 0) {
-                        ESP_LOGI(TAG, "SSE client fd=%d disconnected (keepalive)", clients[i].sockfd);
-                        cleanup(clients[i]);
-                    } else {
-                        clients[i].lastActivity = now;
-                    }
-                }
-            }
-        }
     }
 
     template<typename FUNC>
@@ -111,15 +93,16 @@ public:
                 SocketStream stream(clients[i].server, clients[i].sockfd);
                 if (func(stream) == false) {
                     cleanup(clients[i]);
-                } else {
-                    clients[i].lastActivity = xTaskGetTickCount();
                 }
             }
         }
     }
 
 protected:
-    virtual void OnConnect(Stream& /*s*/) {}
+    virtual void OnConnect(Stream& /*s*/) {
+        // Default: nothing. Derived class can override.
+    }
+
     void cleanup(ClientSlot& c) {
         ESP_LOGI(TAG, "Cleaning up client fd=%d", c.sockfd);
         c.active = false;
