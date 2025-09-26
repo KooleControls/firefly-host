@@ -22,7 +22,7 @@ protected:
 
         size_t write(const void* data, size_t len) override {
             if (!server || sockfd < 0) return 0;
-            int sent = httpd_socket_send(server, sockfd, data, len, 0);
+            int sent = httpd_socket_send(server, sockfd, (const char*) data, len, 0);
             return sent < 0 ? 0 : sent;
         }
 
@@ -43,9 +43,7 @@ protected:
 template<size_t MaxClients>
 class HttpSseEndpoint : public HttpEndpoint, protected HttpSseEndpointBase {
 public:
-    HttpSseEndpoint(const char* /*taskName*/, uint32_t /*stackSize*/, UBaseType_t /*prio*/) {
-        // Could spawn a keepalive task here if desired
-    }
+    HttpSseEndpoint() {}
 
     esp_err_t handle(httpd_req_t* req) override {
         int fd = httpd_req_to_sockfd(req);
@@ -74,9 +72,8 @@ public:
                 clients[i].active = true;
                 ESP_LOGI(TAG, "SSE client %d connected (fd=%d)", (int)i, fd);
 
-                // Call OnConnect hook
                 SocketStream stream(clients[i].server, clients[i].sockfd);
-                OnConnect(stream);
+                OnConnect(stream);  // hook for derived
 
                 break;
             }
@@ -98,9 +95,21 @@ public:
         }
     }
 
+    /// Periodic keepalive tick
+    void SendKeepAlive() {
+        static const char* msg = ": keepalive\n\n";
+        ForEachClient([&](Stream& s) {
+            if (s.write(msg, strlen(msg)) == 0) {
+                return false; // drop client if failed
+            }
+            s.flush();
+            return true;
+        });
+    }
+
 protected:
     virtual void OnConnect(Stream& /*s*/) {
-        // Default: nothing. Derived class can override.
+        // default: do nothing
     }
 
     void cleanup(ClientSlot& c) {

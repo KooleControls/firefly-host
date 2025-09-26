@@ -57,7 +57,7 @@ private:
                 UpdateData();
             }
             // handle keepalive + cleanup
-            tick();
+            SendKeepAlive();
         }
     }
 

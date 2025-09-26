@@ -1,134 +1,74 @@
 #pragma once
-#include "HttpEndpoint.h"
+#include "StaticVector.h"
+#include "Guest.h"
 #include "Mutex.h"
-#include "Stream.h"
-#include "esp_http_server.h"
-#include "esp_log.h"
-#include <string.h>
-#include <sys/socket.h>
+#include "DateTime.h"
+#include "Semaphore.h"
+#include <cstring> // memcpy, memcmp
 
-class HttpSseEndpointBase {
-protected:
-    struct ClientSlot {
-        httpd_handle_t server = nullptr;
-        int sockfd = -1;
-        bool active = false;
-        uint32_t lastActivity = 0; // for keepalive timeouts
-    };
+class GuestManager {
+    constexpr static const char *TAG = "GuestManager";
+    static constexpr size_t MAX_GUESTS = 50;
 
-    class SocketStream : public Stream {
-    public:
-        SocketStream(httpd_handle_t server, int sockfd)
-            : server(server), sockfd(sockfd) {}
-
-        size_t write(const void* data, size_t len) override {
-            if (!server || sockfd < 0) return 0;
-            int sent = httpd_socket_send(server, sockfd, data, len, 0);
-            return sent < 0 ? 0 : sent;
-        }
-
-        size_t read(void* buffer, size_t len) override {
-            if (sockfd < 0) return 0;
-            int r = ::recv(sockfd, buffer, len, MSG_DONTWAIT);
-            return (r <= 0) ? 0 : r;
-        }
-
-        void flush() override {}
-
-    private:
-        httpd_handle_t server;
-        int sockfd;
-    };
-};
-
-template<size_t MaxClients>
-class HttpSseEndpoint : public HttpEndpoint, protected HttpSseEndpointBase {
 public:
-    HttpSseEndpoint() = default;
+    GuestManager() = default;
 
-    esp_err_t handle(httpd_req_t* req) override {
-        int fd = httpd_req_to_sockfd(req);
-        if (fd < 0) {
-            ESP_LOGE(TAG, "Failed to get sockfd");
-            return ESP_FAIL;
-        }
-
-        const char* hdr =
-            "HTTP/1.1 200 OK\r\n"
-            "Content-Type: text/event-stream\r\n"
-            "Cache-Control: no-cache\r\n"
-            "Connection: keep-alive\r\n"
-            "\r\n";
-
-        if (httpd_socket_send(req->handle, fd, hdr, strlen(hdr), 0) < 0) {
-            ESP_LOGE(TAG, "Failed to send SSE headers");
-            return ESP_FAIL;
-        }
-
-        LOCK(clientMutex);
-        for (size_t i = 0; i < MaxClients; i++) {
-            if (!clients[i].active) {
-                clients[i].server = req->handle;
-                clients[i].sockfd = fd;
-                clients[i].active = true;
-                clients[i].lastActivity = xTaskGetTickCount();
-                ESP_LOGI(TAG, "SSE client %d connected (fd=%d)", (int)i, fd);
-
-                SocketStream stream(clients[i].server, clients[i].sockfd);
-                OnConnect(stream);
-                break;
-            }
-        }
-
-        return ESP_OK;
+    void init() {
     }
 
-    /// Called periodically from main loop
-    void tick() {
-        uint32_t now = xTaskGetTickCount();
-        LOCK(clientMutex);
-        for (size_t i = 0; i < MaxClients; i++) {
-            if (clients[i].active) {
-                if (now - clients[i].lastActivity > pdMS_TO_TICKS(30000)) {
-                    // send keepalive
-                    static const char* msg = ": keepalive\n\n";
-                    if (httpd_socket_send(clients[i].server, clients[i].sockfd, msg, strlen(msg), 0) < 0) {
-                        ESP_LOGI(TAG, "SSE client fd=%d disconnected (keepalive)", clients[i].sockfd);
-                        cleanup(clients[i]);
-                    } else {
-                        clients[i].lastActivity = now;
-                    }
-                }
-            }
+    void ReportGuest(const uint8_t mac[6], uint32_t buttonPresses) {
+        LOCK(mutex);
+
+        if (guests.full())
+            return;
+
+        Guest *g = findGuest(mac);
+        if (g) {
+            updateGuest(*g, buttonPresses);
+        } else {
+            createGuest(mac, buttonPresses);
+        }
+
+        updateSem.Give();  // notify listeners
+    }
+
+    template <typename Func>
+    void ForEachGuest(Func func) {
+        LOCK(mutex);
+        for (int i = 0; i < guests.size(); i++) {
+            func(guests[i]);
         }
     }
 
-    template<typename FUNC>
-    void ForEachClient(FUNC&& func) {
-        LOCK(clientMutex);
-        for (size_t i = 0; i < MaxClients; i++) {
-            if (clients[i].active) {
-                SocketStream stream(clients[i].server, clients[i].sockfd);
-                if (func(stream) == false) {
-                    cleanup(clients[i]);
-                } else {
-                    clients[i].lastActivity = xTaskGetTickCount();
-                }
-            }
-        }
-    }
-
-protected:
-    virtual void OnConnect(Stream& /*s*/) {}
-    void cleanup(ClientSlot& c) {
-        ESP_LOGI(TAG, "Cleaning up client fd=%d", c.sockfd);
-        c.active = false;
-        c.server = nullptr;
-        c.sockfd = -1;
+    /// Block until guests are updated
+    bool waitForUpdate(TickType_t timeout = portMAX_DELAY) {
+        return updateSem.Take(timeout);
     }
 
 private:
-    ClientSlot clients[MaxClients];
-    Mutex clientMutex;
-    static constexpr const char* TAG = "HttpSSE";
+    Mutex mutex;
+    StaticVector<Guest, MAX_GUESTS> guests;
+    Semaphore updateSem;   // wrapped FreeRTOS semaphore
+
+    Guest *findGuest(const uint8_t mac[6]) {
+        for (int i = 0; i < guests.size(); i++) {
+            if (memcmp(guests[i].mac, mac, 6) == 0) {
+                return &guests[i];
+            }
+        }
+        return nullptr;
+    }
+
+    void updateGuest(Guest &g, uint32_t buttonPresses) {
+        g.lastMessageTime = DateTime::Now();
+        g.buttonPresses = buttonPresses;
+    }
+
+    void createGuest(const uint8_t mac[6], uint32_t buttonPresses) {
+        Guest newGuest{};
+        memcpy(newGuest.mac, mac, 6);
+        newGuest.lastMessageTime = DateTime::Now();
+        newGuest.buttonPresses = buttonPresses;
+        guests.push_back(newGuest);
+    }
 };
