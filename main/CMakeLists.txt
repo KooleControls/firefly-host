@@ -2,6 +2,7 @@
 
 set(SOURCE_FILES_LIST
     "main.cpp"
+    "Application/EspNow/EspNow.cpp"
     "Application/Ftp/FtpServer.cpp"
     "lib/nvs/NvsStorage.cpp"
     "lib/system/DateTime.cpp"
@@ -12,6 +13,7 @@ set(INCLUDE_DIRS_LIST
     .
     "Application"
     "lib"
+    "Application/EspNow"
     "Application/Ftp"
     "Application/Guests"
     "Application/Hardware"

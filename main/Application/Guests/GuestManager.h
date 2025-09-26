@@ -31,19 +31,16 @@ public:
     {
         LOCK(mutex);
 
+        if(guests.full())
+            return;
+
         Guest *g = findGuest(mac);
-        if (g)
-        {
+        if (g) {
             updateGuest(*g, buttonPresses);
+            return;
         }
-        else
-        {
-            if (!guests.full())
-            {
-                createGuest(mac, buttonPresses);
-            }
-            // else: ignore when full (or log a warning)
-        }
+        
+        createGuest(mac, buttonPresses);
     }
 
     template <typename Func>

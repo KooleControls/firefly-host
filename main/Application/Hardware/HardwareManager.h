@@ -4,6 +4,7 @@
 #include "WifiDriver.h"
 #include "EthernetDriver.h"
 #include "FatFsDriver.h"
+#include "SystemInit.h"
 
 class HardwareManager {
     constexpr static const char* TAG = "HardwareManager";
@@ -19,7 +20,8 @@ public:
         if(initGuard.IsReady())
             return;
             
-
+        SystemInit::InitNvs();
+        SystemInit::InitNetworkStack();
         wifiDriver.Init();
         ethernetDriver.Init();
         fatFsDriver.Init();

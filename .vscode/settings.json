@@ -30,6 +30,7 @@
     "xutility": "cpp",
     "string": "cpp",
     "string_view": "cpp",
-    "format": "cpp"
+    "format": "cpp",
+    "type_traits": "cpp"
   }
 }
