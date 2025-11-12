@@ -1,14 +1,14 @@
 #pragma once
 #include "WebServer.h"
 #include "FileController.h"
-#include "ApiController.h"
-
-
+#include "api/GuestSseEndpoint.h"
+#include "api/PostScoreEndpoint.h"
 
 class WebManager {
 public:
-    WebManager(GuestManager& guestManager)
-        : guestManager(guestManager) {}
+    WebManager(EspNowManager& espNowManager)    
+        : espNowManager(espNowManager)
+    {}
     ~WebManager() = default;
 
     WebManager(const WebManager&) = delete;
@@ -18,7 +18,9 @@ public:
 
     void init() {
         server.start();
-        apiController.init();
+        
+        server.registerHandler("/api/guests/events", HTTP_GET, guestSse);
+        server.registerHandler("/api/score", HTTP_POST, postScoreEndpoint);
         
 
         // These need last!
@@ -29,11 +31,13 @@ public:
 
 
 private:
-    WebServer server;
-    GuestManager& guestManager;
-    ApiController apiController{server, guestManager};
-    
+    WebServer server;   
     FileController fileController{server};
+
+    EspNowManager& espNowManager;
+
+    GuestSseEndpoint guestSse {espNowManager};
+    PostScoreEndpoint postScoreEndpoint {espNowManager};
 
 };
 

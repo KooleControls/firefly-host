@@ -12,6 +12,13 @@ AppContext appContext;
 extern "C" void app_main(void)
 {
     // Initialize the application context
+
+
+    SystemInit::InitNvs();
+    SystemInit::InitNetworkStack();
+    SystemInit::InitNtp();
+
+
     appContext.Init();
 
     // Enter the main application loop

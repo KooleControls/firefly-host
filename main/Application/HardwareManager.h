@@ -20,8 +20,6 @@ public:
         if(initGuard.IsReady())
             return;
             
-        SystemInit::InitNvs();
-        SystemInit::InitNetworkStack();
         wifiDriver.Init();
         ethernetDriver.Init();
         fatFsDriver.Init();

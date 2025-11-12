@@ -3,7 +3,6 @@
 #include "HardwareManager.h"
 #include "FtpManager.h"
 #include "WebManager.h"
-#include "GuestManager.h"
 #include "SystemInit.h"
 #include "EspnowManager.h"
 
@@ -21,10 +20,8 @@ public:
             return;
 
         hardwareManager.init();
-        SystemInit::InitNtp();
         ftpManager.init();
-        guestManager.init();
-        espnowManager.init();
+        espNowManager.Init();
         webManager.init();
 
         initGuard.SetReady();
@@ -41,10 +38,9 @@ private:
 
     HardwareManager hardwareManager;
     FtpManager ftpManager;
-    GuestManager guestManager;
 
-    EspNowManager espnowManager{guestManager};
-    WebManager webManager{guestManager};
+    EspNowManager espNowManager;
+    WebManager webManager {espNowManager};
 
 
 };

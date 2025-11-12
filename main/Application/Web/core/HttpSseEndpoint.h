@@ -54,10 +54,14 @@ public:
 
         const char* hdr =
             "HTTP/1.1 200 OK\r\n"
+            "Access-Control-Allow-Origin: *\r\n"
+            "Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS\r\n"
+            "Access-Control-Allow-Headers: Content-Type\r\n"
             "Content-Type: text/event-stream\r\n"
             "Cache-Control: no-cache\r\n"
             "Connection: keep-alive\r\n"
             "\r\n";
+
 
         if (httpd_socket_send(req->handle, fd, hdr, strlen(hdr), 0) < 0) {
             ESP_LOGE(TAG, "Failed to send SSE headers");

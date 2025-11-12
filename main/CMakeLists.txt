@@ -13,7 +13,7 @@ set(INCLUDE_DIRS_LIST
     .
     "Application"
     "lib"
-    "Application/Guests"
+    "Application/EspNow"
     "Application/Web"
     "Application/Web/api"
     "Application/Web/core"
