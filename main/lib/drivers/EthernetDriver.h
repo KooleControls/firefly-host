@@ -31,7 +31,7 @@ public:
         ethNetif = esp_netif_new(&netif_cfg);
         ESP_ERROR_CHECK(esp_netif_attach(ethNetif, esp_eth_new_netif_glue(ethHandle)));
 
-        // Pass `this` as context
+        // Register event handlers
         ESP_ERROR_CHECK(esp_event_handler_instance_register(
             ETH_EVENT, ESP_EVENT_ANY_ID, &EthernetDriver::EventHandler, this, nullptr));
         ESP_ERROR_CHECK(esp_event_handler_instance_register(
@@ -39,6 +39,35 @@ public:
 
         ESP_ERROR_CHECK(esp_eth_start(ethHandle));
         ESP_LOGI(TAG, "Ethernet initialized");
+    }
+
+    /**
+     * @brief Configure a static IP address (disable DHCP)
+     *
+     * @param ip      Static IP address, e.g., "192.168.1.100"
+     * @param gateway Gateway address, e.g., "192.168.1.1"
+     * @param netmask Netmask, e.g., "255.255.255.0"
+     */
+    void SetStaticIp(const char* ip, const char* gateway, const char* netmask)
+    {
+        assert(ethNetif != nullptr && "Ethernet interface not initialized");
+
+        esp_netif_ip_info_t ip_info = {};
+        ESP_ERROR_CHECK(esp_netif_str_to_ip4(ip, &ip_info.ip));
+        ESP_ERROR_CHECK(esp_netif_str_to_ip4(gateway, &ip_info.gw));
+        ESP_ERROR_CHECK(esp_netif_str_to_ip4(netmask, &ip_info.netmask));
+
+        // Stop DHCP client if running
+        esp_err_t err = esp_netif_dhcpc_stop(ethNetif);
+        if (err == ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED) {
+            ESP_LOGW(TAG, "DHCP already stopped");
+        } else {
+            ESP_ERROR_CHECK(err);
+        }
+
+        // Set static IP configuration
+        ESP_ERROR_CHECK(esp_netif_set_ip_info(ethNetif, &ip_info));
+        ESP_LOGI(TAG, "Static IP set to: %s", ip);
     }
 
     bool IsConnected() const { return connected; }
